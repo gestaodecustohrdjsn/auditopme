@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b5f66" />
+  <title>AuditOPME</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">AO</div>
+      <div>
+        <h1>AuditOPME</h1>
+        <p>Conferência e Gestão de OPME</p>
+      </div>
+    </div>
+    <div class="version">v0.1.0</div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Auditoria local</span>
+        <h2>Importe as notas para conferência</h2>
+        <p>Os PDFs são lidos no navegador. Nesta versão, nenhuma informação é enviada para planilhas, servidores ou armazenamento externo.</p>
+      </div>
+    </section>
+
+    <section class="upload-panel" aria-labelledby="upload-title">
+      <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Selecionar ou arrastar arquivos PDF">
+        <div class="upload-icon" aria-hidden="true">⇧</div>
+        <h3 id="upload-title">Arraste os PDFs aqui</h3>
+        <p>ou selecione um ou vários arquivos</p>
+        <button id="select-files" class="btn btn-primary" type="button">Selecionar PDFs</button>
+        <input id="file-input" type="file" accept="application/pdf,.pdf" multiple hidden />
+      </div>
+    </section>
+
+    <section id="summary" class="summary hidden" aria-live="polite">
+      <div class="summary-card"><span>Arquivos</span><strong id="sum-files">0</strong></div>
+      <div class="summary-card"><span>Concluídos</span><strong id="sum-ok">0</strong></div>
+      <div class="summary-card"><span>Com alerta</span><strong id="sum-warn">0</strong></div>
+      <div class="summary-card"><span>Não reconhecidos</span><strong id="sum-error">0</strong></div>
+    </section>
+
+    <section id="results-section" class="results-section hidden">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">Lote atual</span>
+          <h2>Notas processadas</h2>
+        </div>
+        <button id="clear-results" class="btn btn-secondary" type="button">Limpar lote</button>
+      </div>
+      <div id="results" class="results-grid"></div>
+    </section>
+  </main>
+
+  <template id="note-card-template">
+    <article class="note-card">
+      <div class="note-card-head">
+        <div>
+          <div class="note-number">NF —</div>
+          <div class="supplier">Fornecedor não identificado</div>
+        </div>
+        <span class="status-badge">Pendente</span>
+      </div>
+
+      <div class="card-main-grid">
+        <div><span>Cirurgia</span><strong data-field="surgeryDate">—</strong></div>
+        <div><span>Competência</span><strong data-field="competence">—</strong></div>
+        <div><span>Emissão</span><strong data-field="issueDate">—</strong></div>
+        <div><span>Valor NF</span><strong data-field="totalValue">—</strong></div>
+      </div>
+
+      <div class="procedure" data-field="procedure">Procedimento não identificado</div>
+
+      <div class="metrics-row">
+        <span><b data-field="itemTypes">0</b> tipos</span>
+        <span><b data-field="units">0</b> unidades</span>
+        <span data-field="sumStatus">Validação financeira pendente</span>
+      </div>
+
+      <div class="alerts" data-field="alerts"></div>
+
+      <details>
+        <summary>Ver auditoria completa</summary>
+        <div class="audit-content">
+          <div class="audit-grid">
+            <div><span>Paciente</span><strong data-field="patient">—</strong><small>Somente auditoria</small></div>
+            <div><span>CPF</span><strong data-field="cpf">Não localizado</strong><small>Somente auditoria</small></div>
+            <div><span>Médico(s)</span><strong data-field="doctors">—</strong><small>Somente auditoria</small></div>
+            <div><span>Pedido</span><strong data-field="order">—</strong></div>
+            <div><span>CNPJ fornecedor</span><strong data-field="supplierCnpj">—</strong></div>
+            <div><span>Chave de acesso</span><strong data-field="accessKey">—</strong></div>
+            <div><span>Layout</span><strong data-field="layout">—</strong></div>
+            <div><span>Parser</span><strong data-field="parser">—</strong></div>
+          </div>
+
+          <div class="items-wrap">
+            <h4>Itens da nota</h4>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código</th><th>Descrição</th><th>NCM</th><th>CST</th><th>CFOP</th><th>UN</th><th>Qtd.</th><th>V. unit.</th><th>V. total</th>
+                  </tr>
+                </thead>
+                <tbody data-field="items"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </details>
+    </article>
+  </template>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
