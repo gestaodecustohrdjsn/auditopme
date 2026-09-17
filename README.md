@@ -1,171 +1,80 @@
-# AuditOPME — v0.3.0
+# AuditOPME v0.4.0
 
-Aplicação web para leitura local, auditoria e registro de custos de OPME.
+Sistema web para leitura local de DANFEs de OPME, auditoria antes da persistência e consolidação de dados de custos em Google Sheets.
 
-## O que entrou nesta versão
+## O que há nesta versão
 
-A v0.3.0 mantém toda a auditoria da v0.2.0 e adiciona a primeira persistência real:
+- Todo o fluxo da v0.3.0: leitura local dos PDFs, parser MEDPRO, edição, validações, aprovação/rejeição, De-Para e importação para Google Sheets.
+- Novo **Dashboard OPME** dentro do sistema.
+- Período e competência do dashboard são baseados **sempre na data da cirurgia**.
+- Filtros por intervalo de datas, fornecedor e tipo de cirurgia/procedimento.
+- Indicadores:
+  - número de notas fiscais;
+  - linhas de OPME;
+  - quantidade física de OPMEs;
+  - valor total;
+  - valor médio por NF.
+- Consolidações por mês, fornecedor, tipo de cirurgia e item de OPME.
+- Os dados do dashboard vêm somente das notas com status `IMPORTADA` na base.
 
-- conexão com Google Apps Script;
-- gravação em Google Sheets somente após aprovação;
-- botão **Importar aprovadas**;
-- proteção contra duplicidade na base por:
-  - chave de acesso da NF-e; ou
-  - `CNPJ do fornecedor + série + número da NF`;
-- datas gravadas como datas reais no Sheets;
-- competência derivada da **data da cirurgia**;
-- itens gravados em tabela separada;
-- registro técnico de importação na aba `AUDITORIA`;
-- De-Para do tipo de cirurgia persistido na aba `DEPARA` quando o lote é importado;
-- carregamento das regras de De-Para já existentes ao conectar a base;
-- token de acesso temporário enquanto o login Google/Microsoft ainda não foi implementado.
+> O dashboard não mostra “número de cirurgias” nesta versão. Como nome/CPF do paciente não são persistidos, não existe uma chave confiável para afirmar que duas NFs pertencem ou não à mesma cirurgia. O sistema evita inventar essa métrica.
 
-## Privacidade e minimização de dados
+## Privacidade
 
-Os PDFs continuam sendo lidos no navegador.
+Paciente, CPF e médicos continuam disponíveis somente durante a auditoria no navegador. Eles não são enviados ao Apps Script nem persistidos no Google Sheets.
 
-Paciente, CPF e médicos podem aparecer durante a auditoria, porém **não fazem parte do objeto enviado ao Apps Script**. Há duas proteções:
+## Atualização do Apps Script da v0.3 para v0.4
 
-1. o frontend cria o objeto de persistência por lista branca;
-2. o backend rejeita requisições que contenham chaves de dados pessoais de auditoria.
+1. Abra a planilha `AuditOPME - Base de Dados`.
+2. Vá em **Extensões > Apps Script**.
+3. Substitua o conteúdo de `Code.gs` pelo arquivo `apps-script/Code.gs` desta versão.
+4. Execute `setupAuditOPME()` novamente. A função é compatível com a estrutura existente e não recria o token quando ele já existe.
+5. Vá em **Implantar > Gerenciar implantações**.
+6. Edite a implantação atual do Aplicativo da Web.
+7. Em **Versão**, selecione **Nova versão** e clique em **Implantar**.
+8. Ao atualizar a implantação existente, a URL `/exec` permanece a mesma.
 
-Nesta versão:
+## Atualização do GitHub Pages
 
-- PDF: não enviado e não armazenado;
-- paciente: não enviado;
-- CPF: não enviado;
-- médicos/CRM: não enviados;
-- notas rejeitadas: não são gravadas na base de custos;
-- somente notas aprovadas podem ser importadas.
+Substitua os arquivos do repositório pelos desta pasta. Não remova a estrutura de diretórios.
 
-## 1. Atualizar o GitHub Pages
+A interface passa a ter duas áreas:
 
-Copie o conteúdo desta pasta para a raiz do repositório `auditopme`, substituindo a v0.2.0.
+- **Auditoria**: upload e conferência das NFs.
+- **Dashboard**: consulta da base já importada.
 
-A estrutura relevante passa a ser:
+## Configuração em outro computador
+
+Na v0.4.0, a conexão ainda funciona por URL + token:
+
+- a URL do Apps Script é salva em `localStorage` daquele navegador;
+- o token fica apenas em `sessionStorage` e, portanto, é temporário.
+
+Assim, um computador novo precisa receber a URL e o token. Mesmo no computador atual, uma nova sessão do navegador pode exigir o token novamente. Isso é intencional nesta fase para evitar deixar o token persistente no navegador.
+
+A autenticação de usuários (Google/Microsoft) será uma camada posterior e substituirá esse processo manual.
+
+## Estrutura
 
 ```text
 auditopme/
 ├── index.html
-├── css/
-├── js/
-│   ├── app.js
-│   ├── audit.js
-│   ├── backend.js
-│   ├── pdf-reader.js
-│   ├── validators.js
-│   └── parsers/
+├── README.md
 ├── apps-script/
 │   └── Code.gs
-└── docs/
+├── css/
+│   └── style.css
+├── docs/
+│   ├── arquitetura.md
+│   └── base-de-dados.md
+└── js/
+    ├── app.js
+    ├── audit.js
+    ├── backend.js
+    ├── dashboard.js
+    ├── pdf-reader.js
+    ├── validators.js
+    └── parsers/
+        ├── parser-base.js
+        └── medpro-v1.js
 ```
-
-A pasta `apps-script/` é documentação/cópia do backend e não é executada pelo GitHub Pages.
-
-## 2. Configurar a planilha
-
-Abra a planilha **AuditOPME - Base de Dados** e depois **Extensões → Apps Script**.
-
-No projeto **AuditOPME Backend**:
-
-1. abra `Code.gs`;
-2. apague o conteúdo existente;
-3. copie todo o conteúdo de `apps-script/Code.gs`;
-4. salve;
-5. execute manualmente a função `setupAuditOPME`;
-6. autorize o projeto quando o Google solicitar.
-
-A função:
-
-- cria as abas que estiverem faltando;
-- coloca os cabeçalhos nas abas vazias;
-- não apaga dados existentes;
-- configura formatos de data/moeda;
-- registra a planilha usada pelo backend;
-- cria o token de acesso.
-
-As abas são:
-
-`NOTAS`, `ITENS`, `AUDITORIA`, `DEPARA`, `LAYOUTS` e `CONFIG`.
-
-### Copiar o token
-
-Depois de executar `setupAuditOPME`, abra o **Registro de execução**. Haverá uma linha semelhante a:
-
-```text
-TOKEN DE ACESSO: xxxxxxxx...
-```
-
-Guarde esse token. Se precisar vê-lo novamente, execute `mostrarTokenAuditOPME()`.
-
-Para invalidar o token anterior e gerar outro, execute `renovarTokenAuditOPME()`.
-
-## 3. Implantar o Apps Script
-
-No editor do Apps Script:
-
-1. **Implantar → Nova implantação**;
-2. tipo: **Aplicativo da Web**;
-3. executar como: **Eu**;
-4. acesso: **Qualquer pessoa**;
-5. implante;
-6. copie a URL que termina em `/exec`.
-
-> Esta configuração pública é uma ponte técnica da v0.3.0. O endpoint não aceita gravações sem o token. Quando implementarmos login Google/Microsoft, esta camada será substituída por autenticação de usuário.
-
-Sempre que alterar `Code.gs` depois, crie uma nova versão da implantação ou edite a implantação existente para apontar para a versão mais recente.
-
-## 4. Conectar o AuditOPME
-
-Abra o sistema no GitHub Pages.
-
-1. clique em **Configurar base**;
-2. informe a URL `/exec` do Apps Script;
-3. informe o token;
-4. clique em **Salvar e testar**.
-
-Quando estiver funcionando, o cabeçalho mostrará **Base conectada**.
-
-A URL do backend é salva no `localStorage`. O token fica somente no `sessionStorage`, portanto não é gravado no repositório e tende a desaparecer ao encerrar a sessão do navegador.
-
-## 5. Teste recomendado
-
-Faça primeiro um teste controlado:
-
-1. carregue somente uma NF da MEDPRO;
-2. confira todos os dados;
-3. aprove a NF;
-4. clique em **Importar aprovadas (1)**;
-5. confirme a mensagem de privacidade;
-6. verifique as abas `NOTAS`, `ITENS` e `AUDITORIA`.
-
-Depois tente importar a mesma NF outra vez. Ela deverá aparecer como **Já cadastrada** e não será duplicada na planilha.
-
-## Estrutura de persistência
-
-Veja `docs/base-de-dados.md` para o detalhamento das colunas.
-
-## Regra de competência
-
-A competência de custos é calculada pela **data da cirurgia**, não pela data de emissão da NF e nem pela data de importação.
-
-Exemplo:
-
-```text
-Cirurgia:      31/08/2026
-Emissão NF:    10/09/2026
-Importação:    17/09/2026
-Competência:   08/2026
-```
-
-## Próximas etapas
-
-Depois de validarmos a persistência em uso real:
-
-- autenticação Google e Microsoft;
-- usuário de auditoria/importação;
-- consulta prévia de duplicidades na base;
-- dashboard por período da cirurgia;
-- relatórios/exportações;
-- administração visual das regras de De-Para;
-- suporte a novos fornecedores/layouts.

@@ -1,4 +1,4 @@
-# Arquitetura — AuditOPME v0.3.0
+# Arquitetura — AuditOPME v0.4.0
 
 ## Fronteira de dados
 
@@ -69,3 +69,7 @@ Datas da cirurgia e emissão são gravadas como valores de data reais no Google 
 ## Futuro
 
 A camada de token é temporária. Login Google/Microsoft substituirá a autenticação técnica e permitirá preencher `usuario_importacao`, histórico de decisões e perfis de acesso.
+
+## v0.4.0 — Dashboard
+
+O dashboard consulta apenas a base persistida. A ação `dashboard` do Apps Script lê `NOTAS` e `ITENS`, filtra por `data_cirurgia` e retorna apenas agregados necessários à interface. Dados de auditoria temporários não participam da consulta e não são persistidos.

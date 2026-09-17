@@ -36,7 +36,7 @@ export async function backendRequest(action, payload = {}, options = {}) {
     payload,
     client: {
       app: "AuditOPME",
-      version: "0.3.0",
+      version: "0.4.0",
       sentAt: new Date().toISOString(),
     },
   };

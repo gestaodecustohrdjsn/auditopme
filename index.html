@@ -16,14 +16,19 @@
         <p>Conferência e Gestão de OPME</p>
       </div>
     </div>
+    <nav class="app-nav" aria-label="Navegação principal">
+      <button class="app-nav-button active" type="button" data-view="audit">Auditoria</button>
+      <button class="app-nav-button" type="button" data-view="dashboard">Dashboard</button>
+    </nav>
     <div class="topbar-actions">
       <span id="backend-status" class="backend-status offline">Base não conectada</span>
       <button id="backend-configure" class="btn btn-secondary btn-compact" type="button">Configurar base</button>
-      <div class="version">v0.3.0</div>
+      <div class="version">v0.4.0</div>
     </div>
   </header>
 
   <main class="container">
+    <div id="audit-view">
     <section class="hero">
       <div>
         <span class="eyebrow">Auditoria local</span>
@@ -63,6 +68,62 @@
         </div>
       </div>
       <div id="results" class="results-grid"></div>
+    </section>
+    </div>
+
+    <section id="dashboard-view" class="dashboard-view hidden" aria-labelledby="dashboard-title">
+      <div class="dashboard-heading">
+        <div>
+          <span class="eyebrow">Gestão de custos</span>
+          <h2 id="dashboard-title">Dashboard OPME</h2>
+          <p>Todos os indicadores usam a <strong>data da cirurgia</strong> como referência do período.</p>
+        </div>
+      </div>
+
+      <form id="dashboard-filters" class="dashboard-filters">
+        <label>Data inicial<input id="dash-start-date" type="date" /></label>
+        <label>Data final<input id="dash-end-date" type="date" /></label>
+        <label>Fornecedor<select id="dash-supplier"><option value="">Todos os fornecedores</option></select></label>
+        <label>Tipo de cirurgia<select id="dash-procedure"><option value="">Todos os procedimentos</option></select></label>
+        <div class="dashboard-filter-actions">
+          <button id="dash-all-period" class="btn btn-secondary" type="button">Todo período</button>
+          <button id="dash-refresh" class="btn btn-primary" type="submit">Aplicar filtros</button>
+        </div>
+      </form>
+
+      <div id="dashboard-status" class="dashboard-status">Conecte a base para visualizar o dashboard.</div>
+
+      <div id="dashboard-content" class="dashboard-content hidden">
+        <div class="dashboard-kpis">
+          <article class="dashboard-kpi"><span>Notas fiscais</span><strong id="dash-kpi-notes">0</strong></article>
+          <article class="dashboard-kpi"><span>Linhas de OPME</span><strong id="dash-kpi-lines">0</strong></article>
+          <article class="dashboard-kpi"><span>Unidades de OPME</span><strong id="dash-kpi-units">0</strong></article>
+          <article class="dashboard-kpi dashboard-kpi-money"><span>Valor total</span><strong id="dash-kpi-total">R$ 0,00</strong></article>
+          <article class="dashboard-kpi dashboard-kpi-money"><span>Valor médio por NF</span><strong id="dash-kpi-average">R$ 0,00</strong></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="dashboard-panel">
+            <div class="dashboard-panel-head"><h3>Evolução mensal</h3><span>Por data da cirurgia</span></div>
+            <div class="table-scroll"><table class="dashboard-table"><thead><tr><th>Competência</th><th>NFs</th><th>Unidades</th><th>Valor</th></tr></thead><tbody id="dash-months-body"></tbody></table></div>
+          </section>
+
+          <section class="dashboard-panel">
+            <div class="dashboard-panel-head"><h3>Fornecedores</h3><span>Consolidado do período</span></div>
+            <div class="table-scroll"><table class="dashboard-table"><thead><tr><th>Fornecedor</th><th>NFs</th><th>Unidades</th><th>Valor</th></tr></thead><tbody id="dash-suppliers-body"></tbody></table></div>
+          </section>
+
+          <section class="dashboard-panel dashboard-panel-wide">
+            <div class="dashboard-panel-head"><h3>Tipos de cirurgia</h3><span>Base para análises de custos</span></div>
+            <div class="table-scroll"><table class="dashboard-table"><thead><tr><th>Procedimento</th><th>NFs</th><th>Unidades</th><th>Valor</th></tr></thead><tbody id="dash-procedures-body"></tbody></table></div>
+          </section>
+
+          <section class="dashboard-panel dashboard-panel-wide">
+            <div class="dashboard-panel-head"><h3>OPMEs no período</h3><span>Até 25 itens, ordenados por valor</span></div>
+            <div class="table-scroll"><table class="dashboard-table"><thead><tr><th>Código</th><th>Descrição</th><th>Quantidade</th><th>NFs</th><th>Valor</th></tr></thead><tbody id="dash-items-body"></tbody></table></div>
+          </section>
+        </div>
+      </div>
     </section>
   </main>
 

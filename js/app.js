@@ -3,6 +3,7 @@ import { processExtractedText, buildPersistableRecord } from "./audit.js";
 import { backendRequest, getBackendConfig, saveBackendConfig, clearBackendToken } from "./backend.js";
 import { validateAuditNote } from "./validators.js";
 import { formatCompetence, parseBrazilianNumber } from "./parsers/parser-base.js";
+import { initDashboard } from "./dashboard.js";
 
 const input = document.querySelector("#file-input");
 const selectButton = document.querySelector("#select-files");
@@ -77,6 +78,7 @@ document.querySelectorAll("[data-close-dialog]").forEach(button => {
 });
 
 editForm.elements.tipoCirurgia.addEventListener("input", toggleDeparaBox);
+initDashboard();
 initializeBackend();
 
 async function handleFiles(files) {
@@ -639,7 +641,10 @@ async function connectBackend(showResult = false) {
     state.backend.connected = Boolean(info?.ready);
     state.backend.info = info;
     updateBackendStatus(state.backend.connected, state.backend.connected ? `Base conectada • ${info.spreadsheetName || "Google Sheets"}` : "Base indisponível");
-    if (state.backend.connected) await loadPersistentDeparas();
+    if (state.backend.connected) {
+      await loadPersistentDeparas();
+      window.dispatchEvent(new CustomEvent("auditopme:backend-connected", { detail: info }));
+    }
     if (showResult) showBackendTest(`Conectado a “${info.spreadsheetName || "Google Sheets"}”.`, "success");
     return info;
   } finally {
@@ -657,6 +662,7 @@ function disconnectBackend() {
   updateRulesInfo();
   updateImportButton();
   backendDialog.close();
+  window.dispatchEvent(new CustomEvent("auditopme:backend-disconnected"));
   showToast("Base desconectada do navegador atual.");
 }
 

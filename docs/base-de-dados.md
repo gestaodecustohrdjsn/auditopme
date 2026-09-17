@@ -1,4 +1,4 @@
-# Base de dados — AuditOPME v0.3.0
+# Base de dados — AuditOPME v0.4.0
 
 ## NOTAS
 
@@ -82,3 +82,7 @@ A prioridade é:
 2. caso a chave não esteja disponível: `CNPJ fornecedor + série + número NF`.
 
 Assim, fornecedores diferentes podem ter o mesmo número de NF sem colisão.
+
+## v0.4.0 — Uso analítico
+
+Nenhuma nova coluna é necessária para o dashboard inicial. A consulta utiliza principalmente `NOTAS.data_cirurgia`, `NOTAS.tipo_cirurgia`, `NOTAS.fornecedor`, `NOTAS.valor_total` e as linhas relacionadas em `ITENS`.
