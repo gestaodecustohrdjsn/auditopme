@@ -27,6 +27,8 @@ export function processExtractedText(text, file, meta = {}) {
  * Paciente, CPF e médicos não fazem parte desta lista branca.
  */
 export function buildPersistableRecord(note) {
+  // Lista branca de persistência. Dados exclusivos de auditoria (paciente,
+  // CPF, médicos e qualquer objeto relacionado) não entram neste retorno.
   return {
     fornecedor: note.documento.fornecedor,
     cnpjFornecedor: note.documento.cnpjFornecedor,
@@ -37,6 +39,7 @@ export function buildPersistableRecord(note) {
     dataEmissao: note.nota.dataEmissao,
     dataCirurgia: note.cirurgia.data,
     competencia: note.cirurgia.competencia,
+    tipoCirurgiaOriginal: note.cirurgia.tipoOriginal,
     tipoCirurgia: note.cirurgia.tipoPadronizado || note.cirurgia.tipoOriginal,
     valorTotal: note.nota.valorTotal,
     itens: note.itens.map(item => ({

@@ -1,44 +1,71 @@
-# Arquitetura — AuditOPME
+# Arquitetura — AuditOPME v0.3.0
 
-## Princípio central
+## Fronteira de dados
 
-**Auditar tudo; persistir somente o necessário para gestão de custos.**
+O sistema possui dois modelos conceituais.
 
-O PDF é lido no navegador. `AuditNota` pode conter dados pessoais necessários para a conferência. A função `buildPersistableRecord()` cria um segundo objeto por lista branca e exclui paciente, CPF e médicos.
+### AuditNota
 
-## Camadas
+Existe somente no navegador e pode conter tudo que é necessário para conferir o documento:
 
-- `pdf-reader.js`: leitura do PDF e coordenadas dos textos.
-- `parsers/*`: reconhecimento de fornecedor/layout e extração para o formato comum `AuditNota`.
-- `validators.js`: validações independentes do layout.
-- `audit.js`: orquestra parser/validação e define o registro permitido para persistência.
-- `app.js`: estado do lote, interface, edição, aprovação/rejeição e De-Para temporário.
+- paciente;
+- CPF;
+- médicos;
+- dados da NF;
+- cirurgia;
+- itens;
+- validações.
 
-## Estado da auditoria
+### RegistroCustos
 
-Cada nota possui um estado independente da validação técnica:
+É criado por lista branca a partir da AuditNota e contém somente os dados autorizados a sair do navegador.
 
-- `PENDENTE`
-- `APROVADA`
-- `REJEITADA`
+O backend ainda executa uma segunda verificação para rejeitar chaves sensíveis caso sejam enviadas por engano.
 
-A validação técnica continua usando `OK`, `ALERTA`, `ERRO` ou `NAO_RECONHECIDO`.
+## Fluxo
 
-Uma nota com `ERRO` não pode ser aprovada antes da correção. Alertas permitem aprovação.
+```text
+PDF
+ ↓
+PDF.js no navegador
+ ↓
+Parser do fornecedor/layout
+ ↓
+AuditNota completa (memória do navegador)
+ ↓
+Auditoria / edição / De-Para / aprovação
+ ↓
+RegistroCustos (lista branca)
+ ↓
+Apps Script
+ ↓
+Validação + duplicidade + lock
+ ↓
+Google Sheets
+  ├─ NOTAS
+  ├─ ITENS
+  ├─ AUDITORIA
+  ├─ DEPARA
+  ├─ LAYOUTS
+  └─ CONFIG
+```
 
-## Duplicidade
+## Comunicação GitHub Pages → Apps Script
 
-Nesta fase, a verificação ocorre somente dentro do lote aberto no navegador:
+A v0.3.0 usa POST `text/plain` em modo `no-cors`. Como o navegador não consegue ler diretamente a resposta opaca, cada requisição recebe um UUID.
 
-1. chave de acesso da NF-e, quando disponível;
-2. fallback: CNPJ do fornecedor + série + número da NF.
+O Apps Script guarda o resultado por alguns minutos em `CacheService`, e o frontend consulta o resultado via JSONP usando apenas esse UUID.
 
-Quando houver persistência, a mesma lógica deverá ser repetida no backend contra a base histórica.
+O token de escrita segue somente no corpo do POST e não é colocado na URL.
 
-## De-Para
+## Concorrência
 
-A v0.2.0 implementa regras temporárias para `tipoCirurgia`, com escopo:
+A importação usa `LockService` para evitar que duas requisições simultâneas gravem a mesma NF entre a conferência de duplicidade e a escrita.
 
-`fornecedor/CNPJ + layout + valor extraído -> valor padronizado`
+## Datas
 
-As regras desaparecem ao limpar/fechar o lote. A persistência delas será adicionada no backend em versão posterior.
+Datas da cirurgia e emissão são gravadas como valores de data reais no Google Sheets. A competência é o primeiro dia do mês da cirurgia e recebe formatação `MM/AAAA`.
+
+## Futuro
+
+A camada de token é temporária. Login Google/Microsoft substituirá a autenticação técnica e permitirá preencher `usuario_importacao`, histórico de decisões e perfis de acesso.

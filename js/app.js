@@ -1,5 +1,6 @@
 import { extractPdfText } from "./pdf-reader.js";
-import { processExtractedText } from "./audit.js";
+import { processExtractedText, buildPersistableRecord } from "./audit.js";
+import { backendRequest, getBackendConfig, saveBackendConfig, clearBackendToken } from "./backend.js";
 import { validateAuditNote } from "./validators.js";
 import { formatCompetence, parseBrazilianNumber } from "./parsers/parser-base.js";
 
@@ -20,11 +21,20 @@ const deparaBox = document.querySelector("#depara-box");
 const rejectDialog = document.querySelector("#reject-dialog");
 const rejectForm = document.querySelector("#reject-form");
 const toast = document.querySelector("#toast");
+const backendStatus = document.querySelector("#backend-status");
+const backendConfigure = document.querySelector("#backend-configure");
+const backendDialog = document.querySelector("#backend-dialog");
+const backendForm = document.querySelector("#backend-form");
+const backendTestResult = document.querySelector("#backend-test-result");
+const backendDisconnect = document.querySelector("#backend-disconnect");
+const importApprovedButton = document.querySelector("#import-approved");
 
 const state = {
   notes: new Map(),
   sequence: 1,
   deparas: [],
+  loteId: crypto.randomUUID(),
+  backend: { connected: false, busy: false, info: null },
 };
 
 selectButton.addEventListener("click", e => { e.stopPropagation(); input.click(); });
@@ -43,6 +53,10 @@ clearButton.addEventListener("click", clearResults);
 addItemButton.addEventListener("click", () => appendEditItemRow());
 editForm.addEventListener("submit", saveEdit);
 rejectForm.addEventListener("submit", saveRejection);
+backendConfigure.addEventListener("click", openBackendDialog);
+backendForm.addEventListener("submit", saveAndTestBackend);
+backendDisconnect.addEventListener("click", disconnectBackend);
+importApprovedButton.addEventListener("click", importApprovedNotes);
 
 results.addEventListener("click", event => {
   const button = event.target.closest("[data-action]");
@@ -63,6 +77,7 @@ document.querySelectorAll("[data-close-dialog]").forEach(button => {
 });
 
 editForm.elements.tipoCirurgia.addEventListener("input", toggleDeparaBox);
+initializeBackend();
 
 async function handleFiles(files) {
   const pdfs = files.filter(file => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"));
@@ -93,6 +108,7 @@ async function handleFiles(files) {
 function ensureAuditState(note) {
   if (!note.auditoria) note.auditoria = {};
   note.auditoria.status ||= "PENDENTE";
+  note.auditoria.importacaoStatus ||= "";
   note.auditoria.motivoRejeicao ||= "";
   note.auditoria.observacaoRejeicao ||= "";
   note.auditoria.alteradoManualmente = Boolean(note.auditoria.alteradoManualmente);
@@ -158,13 +174,16 @@ function appendValidationAlert(note, level, message) {
 
 function updateSummary() {
   const notes = [...state.notes.values()];
+  const imported = notes.filter(note => note.auditoria.status === "IMPORTADA").length;
   const approved = notes.filter(note => note.auditoria.status === "APROVADA").length;
   const rejected = notes.filter(note => note.auditoria.status === "REJEITADA").length;
-  const pending = notes.length - approved - rejected;
+  const pending = notes.filter(note => note.auditoria.status === "PENDENTE").length;
   document.querySelector("#sum-files").textContent = notes.length;
   document.querySelector("#sum-approved").textContent = approved;
+  document.querySelector("#sum-imported").textContent = imported;
   document.querySelector("#sum-pending").textContent = pending;
   document.querySelector("#sum-rejected").textContent = rejected;
+  updateImportButton();
 }
 
 function updateRulesInfo() {
@@ -172,8 +191,13 @@ function updateRulesInfo() {
     rulesInfo.classList.add("hidden");
     return;
   }
+  const persisted = state.deparas.filter(rule => rule.persisted).length;
+  const local = state.deparas.length - persisted;
+  const parts = [];
+  if (persisted) parts.push(`${persisted} ${persisted === 1 ? "regra da base" : "regras da base"}`);
+  if (local) parts.push(`${local} ${local === 1 ? "regra nova neste lote" : "regras novas neste lote"}`);
   rulesInfo.classList.remove("hidden");
-  rulesInfo.textContent = `${state.deparas.length} ${state.deparas.length === 1 ? "regra temporária" : "regras temporárias"} de De-Para ${state.deparas.length === 1 ? "ativa" : "ativas"} neste lote.`;
+  rulesInfo.textContent = `De-Para ativo: ${parts.join(" e ")}.`;
 }
 
 function createProcessingCard(file) {
@@ -247,10 +271,18 @@ function renderCard(id, note) {
     decisionNote.classList.add("rejected-note");
     const detail = note.auditoria.observacaoRejeicao ? ` — ${note.auditoria.observacaoRejeicao}` : "";
     decisionNote.textContent = `Rejeitada: ${note.auditoria.motivoRejeicao}${detail}`;
+  } else if (note.auditoria.status === "IMPORTADA") {
+    decisionNote.classList.remove("hidden");
+    decisionNote.classList.add("approved-note");
+    decisionNote.textContent = "Importada para a base de custos. Dados exclusivos de auditoria não foram enviados.";
+  } else if (note.auditoria.importacaoStatus === "DUPLICADA") {
+    decisionNote.classList.remove("hidden");
+    decisionNote.classList.add("duplicate-note");
+    decisionNote.textContent = "Esta nota já existe na base e não foi importada novamente.";
   } else if (note.auditoria.status === "APROVADA") {
     decisionNote.classList.remove("hidden");
     decisionNote.classList.add("approved-note");
-    decisionNote.textContent = "Nota aprovada para futura importação na base de custos.";
+    decisionNote.textContent = "Nota aprovada e pronta para importação na base de custos.";
   }
 
   const tbody = card.querySelector('[data-field="items"]');
@@ -278,6 +310,24 @@ function renderStatus(card, note) {
   const reject = actions.querySelector('[data-action="reject"]');
   const edit = actions.querySelector('[data-action="edit"]');
   const reopen = actions.querySelector('[data-action="reopen"]');
+
+  if (note.auditoria.status === "IMPORTADA") {
+    badge.textContent = "Importada";
+    badge.classList.add("imported");
+    caption.textContent = "Gravada na base de custos";
+    approve.classList.add("hidden"); reject.classList.add("hidden"); edit.classList.add("hidden"); reopen.classList.add("hidden");
+    card.classList.add("imported");
+    return;
+  }
+
+  if (note.auditoria.status === "APROVADA" && note.auditoria.importacaoStatus === "DUPLICADA") {
+    badge.textContent = "Já cadastrada";
+    badge.classList.add("warning");
+    caption.textContent = "Não importada novamente";
+    approve.classList.add("hidden"); reject.classList.add("hidden"); edit.classList.add("hidden"); reopen.classList.remove("hidden");
+    card.classList.add("duplicate");
+    return;
+  }
 
   if (note.auditoria.status === "APROVADA") {
     badge.textContent = "Aprovada";
@@ -456,8 +506,10 @@ function addDeparaRule(rule) {
     item.layout === rule.layout &&
     normalizeComparable(item.from) === normalizeComparable(rule.from)
   );
-  if (existing) existing.to = rule.to;
-  else state.deparas.push(rule);
+  if (existing) {
+    if (normalizeComparable(existing.to) !== normalizeComparable(rule.to)) existing.persisted = false;
+    existing.to = rule.to;
+  } else state.deparas.push({ ...rule, persisted: false });
 }
 
 function applyDeparaRules(note) {
@@ -486,6 +538,7 @@ function approveNote(id) {
     return;
   }
   note.auditoria.status = "APROVADA";
+  note.auditoria.importacaoStatus = "";
   note.auditoria.motivoRejeicao = "";
   note.auditoria.observacaoRejeicao = "";
   refreshAll();
@@ -527,10 +580,187 @@ function reopenNote(id) {
   const note = state.notes.get(id);
   if (!note) return;
   note.auditoria.status = "PENDENTE";
+  note.auditoria.importacaoStatus = "";
   note.auditoria.motivoRejeicao = "";
   note.auditoria.observacaoRejeicao = "";
   refreshAll();
   showToast("Nota reaberta para auditoria.");
+}
+
+async function initializeBackend() {
+  const config = getBackendConfig();
+  updateBackendStatus(false, config.url ? "Acesso não validado" : "Base não conectada");
+  if (!config.url || !config.token) return;
+  try {
+    await connectBackend(false);
+  } catch (error) {
+    console.warn("Backend não conectado automaticamente:", error);
+  }
+}
+
+function openBackendDialog() {
+  const config = getBackendConfig();
+  backendForm.elements.url.value = config.url || "";
+  backendForm.elements.token.value = config.token || "";
+  backendTestResult.classList.add("hidden");
+  backendTestResult.textContent = "";
+  backendDialog.showModal();
+}
+
+async function saveAndTestBackend(event) {
+  event.preventDefault();
+  const url = backendForm.elements.url.value.trim();
+  const token = backendForm.elements.token.value.trim();
+  if (!url || !token) {
+    showBackendTest("Informe a URL e o token.", "error");
+    return;
+  }
+  saveBackendConfig({ url, token });
+  showBackendTest("Testando conexão…", "loading");
+  try {
+    await connectBackend(true);
+    backendDialog.close();
+    showToast("Base de dados conectada.");
+  } catch (error) {
+    state.backend.connected = false;
+    state.backend.info = null;
+    updateBackendStatus(false, "Falha na conexão");
+    updateImportButton();
+    showBackendTest(error.message, "error");
+  }
+}
+
+async function connectBackend(showResult = false) {
+  state.backend.busy = true;
+  state.backend.connected = false;
+  updateImportButton();
+  try {
+    const info = await backendRequest("health", {}, { timeout: 20000 });
+    state.backend.connected = Boolean(info?.ready);
+    state.backend.info = info;
+    updateBackendStatus(state.backend.connected, state.backend.connected ? `Base conectada • ${info.spreadsheetName || "Google Sheets"}` : "Base indisponível");
+    if (state.backend.connected) await loadPersistentDeparas();
+    if (showResult) showBackendTest(`Conectado a “${info.spreadsheetName || "Google Sheets"}”.`, "success");
+    return info;
+  } finally {
+    state.backend.busy = false;
+    updateImportButton();
+  }
+}
+
+function disconnectBackend() {
+  clearBackendToken();
+  state.backend.connected = false;
+  state.backend.info = null;
+  state.deparas = state.deparas.filter(rule => !rule.persisted);
+  updateBackendStatus(false, "Base não conectada");
+  updateRulesInfo();
+  updateImportButton();
+  backendDialog.close();
+  showToast("Base desconectada do navegador atual.");
+}
+
+function updateBackendStatus(connected, text) {
+  backendStatus.textContent = text;
+  backendStatus.classList.toggle("online", connected);
+  backendStatus.classList.toggle("offline", !connected);
+}
+
+function showBackendTest(message, type) {
+  backendTestResult.textContent = message;
+  backendTestResult.className = `backend-test-result ${type || ""}`;
+}
+
+async function loadPersistentDeparas() {
+  const response = await backendRequest("listDeparas", {}, { timeout: 20000 });
+  const rules = Array.isArray(response?.rules) ? response.rules : [];
+  state.deparas = state.deparas.filter(rule => !rule.persisted);
+  for (const rule of rules) mergePersistentRule(rule);
+  applyDeparaToAllPending();
+  refreshAll();
+}
+
+function mergePersistentRule(rule) {
+  const existing = state.deparas.find(item =>
+    item.field === rule.field &&
+    normalizeComparable(item.supplierCnpj) === normalizeComparable(rule.supplierCnpj) &&
+    item.layout === rule.layout &&
+    normalizeComparable(item.from) === normalizeComparable(rule.from)
+  );
+  if (existing) {
+    if (!existing.persisted && normalizeComparable(existing.to) !== normalizeComparable(rule.to)) return;
+    Object.assign(existing, rule, { persisted: true });
+  } else {
+    state.deparas.push({ ...rule, persisted: true });
+  }
+}
+
+function getImportableEntries() {
+  return [...state.notes.entries()].filter(([, note]) =>
+    note.auditoria.status === "APROVADA" && note.auditoria.importacaoStatus !== "DUPLICADA"
+  );
+}
+
+function updateImportButton() {
+  const count = getImportableEntries().length;
+  importApprovedButton.textContent = count ? `Importar aprovadas (${count})` : "Importar aprovadas";
+  importApprovedButton.disabled = !count || !state.backend.connected || state.backend.busy;
+  if (!state.backend.connected) importApprovedButton.title = "Conecte a base de dados primeiro.";
+  else if (!count) importApprovedButton.title = "Nenhuma nota aprovada aguardando importação.";
+  else importApprovedButton.title = `Importar ${count} ${count === 1 ? "nota aprovada" : "notas aprovadas"}.`;
+}
+
+async function importApprovedNotes() {
+  const entries = getImportableEntries();
+  if (!entries.length) return;
+  if (!state.backend.connected) {
+    openBackendDialog();
+    return;
+  }
+
+  const ok = window.confirm(`Importar ${entries.length} ${entries.length === 1 ? "nota aprovada" : "notas aprovadas"} para a base de custos?\n\nPaciente, CPF e médicos NÃO serão enviados.`);
+  if (!ok) return;
+
+  state.backend.busy = true;
+  updateImportButton();
+  try {
+    const payload = {
+      loteId: state.loteId,
+      notes: entries.map(([id, note]) => ({ clientId: id, data: buildPersistableRecord(note) })),
+      deparas: state.deparas.filter(rule => !rule.persisted).map(rule => ({
+        field: rule.field,
+        supplierCnpj: rule.supplierCnpj,
+        layout: rule.layout,
+        from: rule.from,
+        to: rule.to,
+      })),
+    };
+
+    const response = await backendRequest("importBatch", payload, { timeout: 45000 });
+    for (const result of response.results || []) {
+      const note = state.notes.get(result.clientId);
+      if (!note) continue;
+      if (result.status === "IMPORTED") {
+        note.auditoria.status = "IMPORTADA";
+        note.auditoria.importacaoStatus = "IMPORTADA";
+        note.auditoria.idPersistido = result.idNota || "";
+        note.auditoria.importadoEm = result.importedAt || response.importedAt || "";
+      } else if (result.status === "DUPLICATE") {
+        note.auditoria.importacaoStatus = "DUPLICADA";
+      }
+    }
+    await loadPersistentDeparas();
+    const parts = [];
+    if (response.imported) parts.push(`${response.imported} ${response.imported === 1 ? "nota importada" : "notas importadas"}`);
+    if (response.duplicates) parts.push(`${response.duplicates} ${response.duplicates === 1 ? "duplicada ignorada" : "duplicadas ignoradas"}`);
+    showToast(parts.length ? parts.join(" • ") : "Importação concluída.");
+  } catch (error) {
+    console.error(error);
+    showToast(`Falha na importação: ${error.message}`, "error");
+  } finally {
+    state.backend.busy = false;
+    updateImportButton();
+  }
 }
 
 function set(root, name, value) {
@@ -579,8 +809,9 @@ function escapeAttr(value) {
 
 function clearResults() {
   state.notes.clear();
-  state.deparas = [];
+  state.deparas = state.deparas.filter(rule => rule.persisted);
   state.sequence = 1;
+  state.loteId = crypto.randomUUID();
   results.innerHTML = "";
   updateSummary();
   updateRulesInfo();

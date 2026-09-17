@@ -16,7 +16,11 @@
         <p>Conferência e Gestão de OPME</p>
       </div>
     </div>
-    <div class="version">v0.2.0</div>
+    <div class="topbar-actions">
+      <span id="backend-status" class="backend-status offline">Base não conectada</span>
+      <button id="backend-configure" class="btn btn-secondary btn-compact" type="button">Configurar base</button>
+      <div class="version">v0.3.0</div>
+    </div>
   </header>
 
   <main class="container">
@@ -24,7 +28,7 @@
       <div>
         <span class="eyebrow">Auditoria local</span>
         <h2>Importe as notas para conferência</h2>
-        <p>Os PDFs são lidos no navegador. Nesta versão, nenhuma informação é enviada para planilhas, servidores ou armazenamento externo.</p>
+        <p>Os PDFs continuam sendo lidos localmente no navegador. Somente notas aprovadas podem ser enviadas à base de custos — e paciente, CPF e médicos permanecem fora da persistência.</p>
       </div>
     </section>
 
@@ -41,6 +45,7 @@
     <section id="summary" class="summary hidden" aria-live="polite">
       <div class="summary-card"><span>Notas no lote</span><strong id="sum-files">0</strong></div>
       <div class="summary-card"><span>Aprovadas</span><strong id="sum-approved">0</strong></div>
+      <div class="summary-card"><span>Importadas</span><strong id="sum-imported">0</strong></div>
       <div class="summary-card"><span>Pendentes</span><strong id="sum-pending">0</strong></div>
       <div class="summary-card"><span>Rejeitadas</span><strong id="sum-rejected">0</strong></div>
     </section>
@@ -52,7 +57,10 @@
           <h2>Notas processadas</h2>
           <p id="rules-info" class="rules-info hidden">0 regras temporárias de De-Para ativas neste lote.</p>
         </div>
-        <button id="clear-results" class="btn btn-secondary" type="button">Limpar lote</button>
+        <div class="section-actions">
+          <button id="import-approved" class="btn btn-primary" type="button" disabled>Importar aprovadas</button>
+          <button id="clear-results" class="btn btn-secondary" type="button">Limpar lote</button>
+        </div>
       </div>
       <div id="results" class="results-grid"></div>
     </section>
@@ -174,7 +182,7 @@
         </div>
         <div id="depara-box" class="depara-box hidden">
           <label class="checkbox-line"><input type="checkbox" name="criarDeparaCirurgia" /> Aplicar esta correção como De-Para às notas equivalentes deste lote</label>
-          <p>A regra é temporária nesta versão e considera fornecedor + layout + valor extraído.</p>
+          <p>A regra vale imediatamente no lote e será gravada na base quando houver uma importação aprovada.</p>
         </div>
       </div>
 
@@ -244,6 +252,32 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" type="button" data-close-dialog="reject-dialog">Cancelar</button>
         <button class="btn btn-danger" type="submit" value="reject">Confirmar rejeição</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="backend-dialog" class="modal">
+    <form id="backend-form" method="dialog" novalidate>
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow">Base de dados</span>
+          <h3>Conectar Google Sheets</h3>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog="backend-dialog" aria-label="Fechar">×</button>
+      </div>
+      <p class="backend-help">Informe a URL <strong>/exec</strong> do Aplicativo da Web do Apps Script e o token criado por <code>setupAuditOPME()</code>. A URL fica salva neste navegador; o token fica apenas na sessão atual.</p>
+      <label class="field-block">URL do Apps Script
+        <input name="url" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" required />
+      </label>
+      <label class="field-block">Token de acesso
+        <input name="token" type="password" placeholder="Token gerado no Apps Script" autocomplete="off" required />
+      </label>
+      <div id="backend-test-result" class="backend-test-result hidden"></div>
+      <div class="modal-actions">
+        <button id="backend-disconnect" class="btn btn-secondary" type="button">Desconectar</button>
+        <button class="btn btn-secondary" type="button" data-close-dialog="backend-dialog">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar e testar</button>
       </div>
     </form>
   </dialog>
