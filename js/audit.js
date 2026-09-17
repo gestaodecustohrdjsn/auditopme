@@ -6,7 +6,7 @@ export function processExtractedText(text, file, meta = {}) {
   let note;
 
   if (canParseMedpro(text)) {
-    note = parseMedpro(text, file);
+    note = parseMedpro(text, file, meta);
   } else {
     note = emptyAuditNote(file);
     note.sistema.status = "NAO_RECONHECIDO";

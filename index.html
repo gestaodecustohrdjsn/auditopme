@@ -16,7 +16,7 @@
         <p>Conferência e Gestão de OPME</p>
       </div>
     </div>
-    <div class="version">v0.1.1</div>
+    <div class="version">v0.1.2</div>
   </header>
 
   <main class="container">
@@ -92,10 +92,15 @@
       <details>
         <summary>Ver auditoria completa</summary>
         <div class="audit-content">
+          <div class="audit-legend" aria-label="Legenda de privacidade">
+            <span class="audit-only-mark" aria-hidden="true">A</span>
+            <span>Dados usados somente na auditoria e não enviados à base de custos.</span>
+          </div>
+
           <div class="audit-grid">
-            <div><span>Paciente</span><strong data-field="patient">—</strong><small>Somente auditoria</small></div>
-            <div><span>CPF</span><strong data-field="cpf">Não localizado</strong><small>Somente auditoria</small></div>
-            <div><span>Médico(s)</span><strong data-field="doctors">—</strong><small>Somente auditoria</small></div>
+            <div class="audit-only-card"><span>Paciente <i class="audit-only-mark" title="Somente auditoria" aria-label="Somente auditoria">A</i></span><strong data-field="patient">—</strong></div>
+            <div class="audit-only-card"><span>CPF <i class="audit-only-mark" title="Somente auditoria" aria-label="Somente auditoria">A</i></span><strong data-field="cpf">Não localizado</strong></div>
+            <div class="audit-only-card"><span>Médico(s) <i class="audit-only-mark" title="Somente auditoria" aria-label="Somente auditoria">A</i></span><strong data-field="doctors">—</strong></div>
           </div>
 
           <div class="items-wrap">
