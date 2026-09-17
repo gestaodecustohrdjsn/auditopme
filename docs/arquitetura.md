@@ -1,28 +1,44 @@
 # Arquitetura — AuditOPME
 
-## Regra central
+## Princípio central
 
-**O navegador lê tudo. O backend, quando existir, receberá somente os campos explicitamente autorizados para persistência.**
+**Auditar tudo; persistir somente o necessário para gestão de custos.**
 
-O objeto de auditoria (`AuditNota`) pode conter dados pessoais temporários. O objeto persistível (`RegistroCustos`) usa uma lista branca e exclui paciente, CPF e médicos.
+O PDF é lido no navegador. `AuditNota` pode conter dados pessoais necessários para a conferência. A função `buildPersistableRecord()` cria um segundo objeto por lista branca e exclui paciente, CPF e médicos.
 
 ## Camadas
 
-1. `pdf-reader.js`: PDF → texto.
-2. `parsers/*`: texto → estrutura padronizada por fornecedor/layout.
-3. `validators.js`: regras de consistência independentes do layout.
-4. `audit.js`: orquestra parser e validação e, futuramente, gera o objeto persistível.
-5. `app.js`: interface.
+- `pdf-reader.js`: leitura do PDF e coordenadas dos textos.
+- `parsers/*`: reconhecimento de fornecedor/layout e extração para o formato comum `AuditNota`.
+- `validators.js`: validações independentes do layout.
+- `audit.js`: orquestra parser/validação e define o registro permitido para persistência.
+- `app.js`: estado do lote, interface, edição, aprovação/rejeição e De-Para temporário.
 
-## Identificação de NF
+## Estado da auditoria
 
-Prioridade futura para duplicidade:
+Cada nota possui um estado independente da validação técnica:
 
-1. chave de acesso da NF-e;
+- `PENDENTE`
+- `APROVADA`
+- `REJEITADA`
+
+A validação técnica continua usando `OK`, `ALERTA`, `ERRO` ou `NAO_RECONHECIDO`.
+
+Uma nota com `ERRO` não pode ser aprovada antes da correção. Alertas permitem aprovação.
+
+## Duplicidade
+
+Nesta fase, a verificação ocorre somente dentro do lote aberto no navegador:
+
+1. chave de acesso da NF-e, quando disponível;
 2. fallback: CNPJ do fornecedor + série + número da NF.
 
-Número da NF isolado não deve ser tratado como identificador único entre fornecedores.
+Quando houver persistência, a mesma lógica deverá ser repetida no backend contra a base histórica.
 
-## Competência de custos
+## De-Para
 
-A competência é derivada da **data da cirurgia**, não da data de emissão nem da data de importação.
+A v0.2.0 implementa regras temporárias para `tipoCirurgia`, com escopo:
+
+`fornecedor/CNPJ + layout + valor extraído -> valor padronizado`
+
+As regras desaparecem ao limpar/fechar o lote. A persistência delas será adicionada no backend em versão posterior.

@@ -16,7 +16,7 @@
         <p>Conferência e Gestão de OPME</p>
       </div>
     </div>
-    <div class="version">v0.1.2</div>
+    <div class="version">v0.2.0</div>
   </header>
 
   <main class="container">
@@ -39,10 +39,10 @@
     </section>
 
     <section id="summary" class="summary hidden" aria-live="polite">
-      <div class="summary-card"><span>Arquivos</span><strong id="sum-files">0</strong></div>
-      <div class="summary-card"><span>Concluídos</span><strong id="sum-ok">0</strong></div>
-      <div class="summary-card"><span>Com alerta</span><strong id="sum-warn">0</strong></div>
-      <div class="summary-card"><span>Não reconhecidos</span><strong id="sum-error">0</strong></div>
+      <div class="summary-card"><span>Notas no lote</span><strong id="sum-files">0</strong></div>
+      <div class="summary-card"><span>Aprovadas</span><strong id="sum-approved">0</strong></div>
+      <div class="summary-card"><span>Pendentes</span><strong id="sum-pending">0</strong></div>
+      <div class="summary-card"><span>Rejeitadas</span><strong id="sum-rejected">0</strong></div>
     </section>
 
     <section id="results-section" class="results-section hidden">
@@ -50,6 +50,7 @@
         <div>
           <span class="eyebrow">Lote atual</span>
           <h2>Notas processadas</h2>
+          <p id="rules-info" class="rules-info hidden">0 regras temporárias de De-Para ativas neste lote.</p>
         </div>
         <button id="clear-results" class="btn btn-secondary" type="button">Limpar lote</button>
       </div>
@@ -69,7 +70,10 @@
           </div>
           <div class="order-line">Pedido <strong data-field="order">—</strong></div>
         </div>
-        <span class="status-badge">Pendente</span>
+        <div class="card-status-stack">
+          <span class="status-badge" data-field="statusBadge">Pendente</span>
+          <span class="validation-caption" data-field="validationCaption"></span>
+        </div>
       </div>
 
       <div class="card-main-grid">
@@ -79,7 +83,10 @@
         <div><span>Valor NF</span><strong data-field="totalValue">—</strong></div>
       </div>
 
-      <div class="procedure" data-field="procedure">Procedimento não identificado</div>
+      <div class="procedure-wrap">
+        <div class="procedure" data-field="procedure">Procedimento não identificado</div>
+        <div class="procedure-origin hidden" data-field="procedureOrigin"></div>
+      </div>
 
       <div class="metrics-row">
         <span><b data-field="itemTypes">0</b> tipos</span>
@@ -88,6 +95,14 @@
       </div>
 
       <div class="alerts" data-field="alerts"></div>
+      <div class="decision-note hidden" data-field="decisionNote"></div>
+
+      <div class="card-actions" data-field="actions">
+        <button class="btn btn-secondary btn-compact" type="button" data-action="edit">Editar</button>
+        <button class="btn btn-primary btn-compact" type="button" data-action="approve">Aprovar</button>
+        <button class="btn btn-danger-soft btn-compact" type="button" data-action="reject">Rejeitar</button>
+        <button class="btn btn-secondary btn-compact hidden" type="button" data-action="reopen">Reabrir</button>
+      </div>
 
       <details>
         <summary>Ver auditoria completa</summary>
@@ -125,6 +140,115 @@
       </details>
     </article>
   </template>
+
+  <dialog id="edit-dialog" class="modal modal-wide">
+    <form id="edit-form" method="dialog" novalidate>
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow">Conferência manual</span>
+          <h3>Editar dados da nota</h3>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog="edit-dialog" aria-label="Fechar">×</button>
+      </div>
+
+      <input type="hidden" name="noteId" />
+
+      <div class="form-section">
+        <h4>Nota fiscal</h4>
+        <div class="form-grid form-grid-4">
+          <label>NF<input name="numeroNF" autocomplete="off" /></label>
+          <label>Série<input name="serieNF" autocomplete="off" /></label>
+          <label>Pedido<input name="pedido" autocomplete="off" /></label>
+          <label>Valor total<input name="valorTotal" inputmode="decimal" autocomplete="off" /></label>
+          <label class="span-2">Fornecedor<input name="fornecedor" autocomplete="off" /></label>
+          <label>CNPJ fornecedor<input name="cnpjFornecedor" autocomplete="off" /></label>
+          <label>Emissão<input name="dataEmissao" placeholder="dd/mm/aaaa" autocomplete="off" /></label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>Cirurgia</h4>
+        <div class="form-grid form-grid-3">
+          <label>Data da cirurgia<input name="dataCirurgia" placeholder="dd/mm/aaaa" autocomplete="off" /></label>
+          <label class="span-2">Tipo de cirurgia / procedimento<input name="tipoCirurgia" autocomplete="off" /></label>
+        </div>
+        <div id="depara-box" class="depara-box hidden">
+          <label class="checkbox-line"><input type="checkbox" name="criarDeparaCirurgia" /> Aplicar esta correção como De-Para às notas equivalentes deste lote</label>
+          <p>A regra é temporária nesta versão e considera fornecedor + layout + valor extraído.</p>
+        </div>
+      </div>
+
+      <div class="form-section audit-form-section">
+        <div class="form-section-title">
+          <h4>Dados somente para auditoria</h4>
+          <span class="audit-only-mark" aria-hidden="true">A</span>
+        </div>
+        <div class="form-grid form-grid-3">
+          <label>Paciente<input name="paciente" autocomplete="off" /></label>
+          <label>CPF<input name="cpf" autocomplete="off" /></label>
+          <label>Médico(s)<input name="medicos" autocomplete="off" /></label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title items-edit-title">
+          <div>
+            <h4>Itens da nota</h4>
+            <p>Correções aqui alteram somente o lote atual.</p>
+          </div>
+          <button id="add-item" class="btn btn-secondary btn-compact" type="button">Adicionar item</button>
+        </div>
+        <div class="table-scroll edit-items-scroll">
+          <table class="edit-items-table">
+            <thead>
+              <tr>
+                <th>Código</th><th>Descrição</th><th>NCM</th><th>CST</th><th>CFOP</th><th>UN</th><th>Qtd.</th><th>V. unit.</th><th>V. total</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="edit-items"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" type="button" data-close-dialog="edit-dialog">Cancelar</button>
+        <button class="btn btn-primary" type="submit" value="save">Salvar alterações</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="reject-dialog" class="modal">
+    <form id="reject-form" method="dialog" novalidate>
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow">Auditoria</span>
+          <h3>Rejeitar nota</h3>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog="reject-dialog" aria-label="Fechar">×</button>
+      </div>
+      <input type="hidden" name="noteId" />
+      <label class="field-block">Motivo
+        <select name="motivo" required>
+          <option value="">Selecione…</option>
+          <option>NF duplicada</option>
+          <option>Valor divergente</option>
+          <option>Dados da cirurgia divergentes</option>
+          <option>Documento cancelado ou substituído</option>
+          <option>Material / OPME divergente</option>
+          <option>Outro</option>
+        </select>
+      </label>
+      <label class="field-block">Observação
+        <textarea name="observacao" rows="3" placeholder="Opcional, exceto quando o motivo for Outro"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" type="button" data-close-dialog="reject-dialog">Cancelar</button>
+        <button class="btn btn-danger" type="submit" value="reject">Confirmar rejeição</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <script type="module" src="./js/app.js"></script>
 </body>

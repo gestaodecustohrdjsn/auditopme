@@ -20,8 +20,13 @@ export function processExtractedText(text, file, meta = {}) {
   return validateAuditNote(note);
 }
 
+/**
+ * Gera exclusivamente o objeto que poderá, em uma versão posterior, atravessar
+ * a fronteira do navegador e seguir ao backend/base de custos.
+ *
+ * Paciente, CPF e médicos não fazem parte desta lista branca.
+ */
 export function buildPersistableRecord(note) {
-  // Lista branca: somente estes campos poderão seguir futuramente ao backend/Sheets.
   return {
     fornecedor: note.documento.fornecedor,
     cnpjFornecedor: note.documento.cnpjFornecedor,
@@ -34,8 +39,17 @@ export function buildPersistableRecord(note) {
     competencia: note.cirurgia.competencia,
     tipoCirurgia: note.cirurgia.tipoPadronizado || note.cirurgia.tipoOriginal,
     valorTotal: note.nota.valorTotal,
-    itens: note.itens.map(item => ({ ...item })),
-    layout: note.sistema.layout,
-    parser: note.sistema.parser,
+    itens: note.itens.map(item => ({
+      codigo: item.codigo,
+      descricaoOriginal: item.descricaoOriginal,
+      descricaoPadronizada: item.descricaoPadronizada || "",
+      ncm: item.ncm,
+      cst: item.cst,
+      cfop: item.cfop,
+      unidade: item.unidade,
+      quantidade: item.quantidade,
+      valorUnitario: item.valorUnitario,
+      valorTotal: item.valorTotal,
+    })),
   };
 }

@@ -1,66 +1,43 @@
-# AuditOPME
+# AuditOPME — v0.2.0
 
-**Conferência e Gestão de OPME**
+Aplicação web para leitura local, conferência e auditoria de notas de OPME.
 
-Versão inicial do sistema web para leitura local, conferência e futura consolidação de dados de notas fiscais de OPME.
+## O que esta versão faz
 
-## Princípio de privacidade
+- Upload de vários PDFs.
+- Leitura local no navegador com PDF.js.
+- Identificação do layout MEDPRO.
+- Extração de NF, fornecedor, CNPJ, pedido, emissão, cirurgia, competência, valor e chave de acesso.
+- Extração posicional dos itens do DANFE.
+- Uso temporário de paciente, CPF e médicos exclusivamente na auditoria.
+- Validações de datas, campos obrigatórios, chave de acesso, itens e soma financeira.
+- Detecção de possível duplicidade dentro do lote por chave de acesso ou por `CNPJ + série + NF`.
+- Edição manual dos campos e dos itens antes da decisão.
+- Aprovação, rejeição com motivo e reabertura da nota.
+- De-Para temporário do tipo de cirurgia dentro do lote atual.
+- Lista branca separada para a futura base de custos, sem paciente, CPF ou médicos.
 
-O navegador pode utilizar dados pessoais presentes no PDF (ex.: nome do paciente, CPF e médicos) durante a auditoria. Esses campos **não fazem parte do objeto persistível de custos**. Na v0.1.2 nenhum dado é enviado a Google Sheets, Apps Script, Drive ou outro backend.
+## Regra de privacidade desta fase
 
-## v0.1.2
+Os PDFs e os dados extraídos permanecem no navegador. A v0.2.0 ainda não possui backend, Google Sheets, Drive, login ou armazenamento persistente.
 
-- Upload múltiplo de PDFs
-- Leitura local com PDF.js
-- Identificação do layout MEDPRO
-- Extração de dados da NF, cirurgia e itens
-- Validação de soma dos itens
-- Cards de auditoria
-- Estrutura preparada para novos fornecedores/parsers
+Dados pessoais podem ser exibidos durante a auditoria, mas não fazem parte do objeto preparado para a futura base de custos.
 
-## Estrutura
+## Como publicar
 
-```text
-auditopme/
-├── index.html
-├── css/style.css
-├── js/
-│   ├── app.js
-│   ├── audit.js
-│   ├── pdf-reader.js
-│   ├── validators.js
-│   └── parsers/
-│       ├── parser-base.js
-│       └── medpro-v1.js
-└── docs/arquitetura.md
-```
+1. Copie os arquivos deste diretório para a raiz do repositório `auditopme`.
+2. Faça commit/push na branch usada pelo GitHub Pages.
+3. Abra a página publicada e teste com os PDFs MEDPRO.
 
-## Publicação no GitHub Pages
+## Fluxo de auditoria
 
-1. Envie os arquivos para a branch `main` do repositório `auditopme`.
-2. Em **Settings → Pages**, selecione **Deploy from a branch**.
-3. Branch: `main`; pasta: `/ (root)`.
-4. Abra a URL gerada pelo GitHub Pages.
-
-> A leitura usa módulos ES e PDF.js via CDN, portanto a página deve ser aberta por HTTP/HTTPS (GitHub Pages funciona normalmente). Evite testar abrindo `index.html` diretamente via `file://`.
+1. Carregar PDFs.
+2. Conferir os dados e validações.
+3. Usar **Editar** quando necessário.
+4. Opcionalmente criar um De-Para temporário para o tipo de cirurgia.
+5. **Aprovar** notas sem erros ou **Rejeitar** informando o motivo.
+6. Uma nota aprovada/rejeitada pode ser reaberta enquanto o lote estiver na página.
 
 ## Próxima etapa planejada
 
-v0.2: edição de campos, aprovação/rejeição, motivos de auditoria e de-para temporário.
-
-
-## Alterações da v0.1.2
-
-- Parser de itens MEDPRO mais tolerante às quebras de linha do PDF.js.
-- Ordenação do texto do PDF por posição visual antes da extração.
-- CNPJ exibido junto ao fornecedor e pedido abaixo do cabeçalho.
-- Layout/parser removidos da interface de auditoria.
-- Chave de acesso movida para o rodapé da área expandida.
-
-
-## v0.1.2
-
-- Extração dos itens MEDPRO passou a usar coordenadas do PDF.js (NCM como âncora de linha), com fallback textual.
-- Dados exclusivos de auditoria usam um selo `A` com legenda única.
-- Chave de acesso foi movida para um rodapé discreto.
-- Ajustado o espaçamento entre dados de auditoria, tabela de itens e rodapé.
+Persistência com Google Apps Script + Google Sheets, mantendo a lista branca de campos que podem sair do navegador.

@@ -150,6 +150,7 @@ function extractItemsFromPositions(meta = {}) {
 
       result.push({
         codigo,
+        descricaoExtraida: descricao,
         descricaoOriginal: descricao,
         descricaoPadronizada: "",
         ncm: candidate.ncm,
@@ -194,6 +195,7 @@ function extractItemsFromText(normalized) {
 
     items.push({
       codigo,
+      descricaoExtraida: descricao,
       descricaoOriginal: descricao,
       descricaoPadronizada: "",
       ncm,

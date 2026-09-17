@@ -9,6 +9,13 @@ export function emptyAuditNote(file) {
     cirurgia: { data: "", competencia: "", tipoOriginal: "", tipoPadronizado: "" },
     nota: { dataEmissao: "", valorTotal: null },
     itens: [],
+    auditoria: {
+      status: "PENDENTE",
+      motivoRejeicao: "",
+      observacaoRejeicao: "",
+      alteradoManualmente: false,
+      alteracoes: []
+    },
     sistema: {
       layout: "", parser: "", confianca: null, status: "PENDENTE", alertas: [], paginas: 0
     }
