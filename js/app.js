@@ -84,7 +84,6 @@ function renderCard(processed) {
   const fragment = template.content.cloneNode(true);
   const card = fragment.querySelector(".note-card");
   card.querySelector(".note-number").textContent = note.documento.numeroNF ? `NF ${note.documento.numeroNF}` : note.arquivo.nome;
-  card.querySelector(".supplier").textContent = note.documento.fornecedor || "Fornecedor não reconhecido";
 
   const badge = card.querySelector(".status-badge");
   if (note.sistema.status === "OK") { badge.textContent = "Conferência OK"; badge.classList.add("success"); }
@@ -106,14 +105,13 @@ function renderCard(processed) {
     sumNode.className = sumMatches ? "sum-ok" : "sum-bad";
   } else sumNode.textContent = "Validação financeira indisponível";
 
+  set(card, "supplier", note.documento.fornecedor || "Fornecedor não reconhecido");
+  set(card, "supplierCnpj", note.documento.cnpjFornecedor ? `CNPJ ${note.documento.cnpjFornecedor}` : "CNPJ —");
+  set(card, "order", note.documento.pedido || "—");
   set(card, "patient", note.paciente.nome || "Não localizado");
   set(card, "cpf", note.paciente.cpf || "Não localizado");
   set(card, "doctors", note.profissionais.medicos.join(" / ") || "Não localizado");
-  set(card, "order", note.documento.pedido || "—");
-  set(card, "supplierCnpj", note.documento.cnpjFornecedor || "—");
   set(card, "accessKey", formatAccessKey(note.documento.chaveAcesso) || "—");
-  set(card, "layout", note.sistema.layout || "—");
-  set(card, "parser", note.sistema.parser || "—");
 
   const alerts = card.querySelector('[data-field="alerts"]');
   note.sistema.alertas.forEach(alert => {

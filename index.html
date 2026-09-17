@@ -16,7 +16,7 @@
         <p>Conferência e Gestão de OPME</p>
       </div>
     </div>
-    <div class="version">v0.1.0</div>
+    <div class="version">v0.1.1</div>
   </header>
 
   <main class="container">
@@ -60,9 +60,14 @@
   <template id="note-card-template">
     <article class="note-card">
       <div class="note-card-head">
-        <div>
+        <div class="note-identification">
           <div class="note-number">NF —</div>
-          <div class="supplier">Fornecedor não identificado</div>
+          <div class="supplier-line">
+            <span class="supplier" data-field="supplier">Fornecedor não identificado</span>
+            <span class="supplier-separator" aria-hidden="true">•</span>
+            <span class="supplier-cnpj" data-field="supplierCnpj">CNPJ —</span>
+          </div>
+          <div class="order-line">Pedido <strong data-field="order">—</strong></div>
         </div>
         <span class="status-badge">Pendente</span>
       </div>
@@ -91,11 +96,6 @@
             <div><span>Paciente</span><strong data-field="patient">—</strong><small>Somente auditoria</small></div>
             <div><span>CPF</span><strong data-field="cpf">Não localizado</strong><small>Somente auditoria</small></div>
             <div><span>Médico(s)</span><strong data-field="doctors">—</strong><small>Somente auditoria</small></div>
-            <div><span>Pedido</span><strong data-field="order">—</strong></div>
-            <div><span>CNPJ fornecedor</span><strong data-field="supplierCnpj">—</strong></div>
-            <div><span>Chave de acesso</span><strong data-field="accessKey">—</strong></div>
-            <div><span>Layout</span><strong data-field="layout">—</strong></div>
-            <div><span>Parser</span><strong data-field="parser">—</strong></div>
           </div>
 
           <div class="items-wrap">
@@ -110,6 +110,11 @@
                 <tbody data-field="items"></tbody>
               </table>
             </div>
+          </div>
+
+          <div class="audit-footer">
+            <span>Chave de acesso</span>
+            <strong data-field="accessKey">—</strong>
           </div>
         </div>
       </details>

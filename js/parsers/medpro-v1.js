@@ -39,64 +39,51 @@ function extractNfAndSerie(normalized, fileName = "") {
 }
 
 function extractItems(normalized) {
-  const start = normalized.search(/Cod\. Produto/i);
-  const end = normalized.search(/\nVALOR\s*\nDESC/i);
-  if (start < 0 || end <= start) return [];
+  // A tabela do DANFE pode chegar com quebras de linha diferentes dependendo
+  // do leitor de PDF. Por isso a extração trabalha sobre uma versão compacta
+  // do bloco e reconhece a assinatura estrutural do item:
+  // código + descrição + (**) + NCM + CST + CFOP + UN + qtd + v.unit + v.total.
+  const compact = compactText(normalized)
+    .replace(/\(\s*\*\s*\*\s*\)/g, "(**)");
 
-  const block = normalized.slice(start, end);
-  const lines = block.split(/\n+/).map(v => v.trim()).filter(Boolean);
-  const headerEnd = lines.findIndex((line, idx) => idx > 8 && /^ICMS\s*\|/i.test(line));
-  const dataLines = lines.slice(headerEnd >= 0 ? headerEnd + 1 : 0);
+  const start = compact.search(/Cod\. Produto/i);
+  if (start < 0) return [];
 
+  const afterStart = compact.slice(start);
+  const endMatch = afterStart.search(/\bVALOR\s+DESC\b/i);
+  const block = endMatch > 0 ? afterStart.slice(0, endMatch) : afterStart;
+
+  const itemPattern = /(?:^|\s)(\d{3,6})\s+(.+?)\s+\(\*\*\)\s+(\d{8})\s+(\d{3})\s+(\d{4})\s+([A-Z]{1,5}\.?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)/gi;
   const items = [];
-  let i = 0;
-  while (i < dataLines.length) {
-    if (!/^\d{3,6}$/.test(dataLines[i])) { i += 1; continue; }
-    const codigo = dataLines[i];
-    const descParts = [];
-    let j = i + 1;
+  let match;
 
-    while (j < dataLines.length && dataLines[j] !== "(**)" && !/^\(\*\*\)$/.test(dataLines[j])) {
-      // Se encontrarmos um novo código antes de (**), este não é um item válido.
-      if (j > i + 1 && /^\d{3,6}$/.test(dataLines[j]) && /^\d{8}$/.test(dataLines[j + 1] || "")) break;
-      descParts.push(dataLines[j]);
-      j += 1;
-    }
-    if (j >= dataLines.length || !/^\(\*\*\)$/.test(dataLines[j])) { i += 1; continue; }
+  while ((match = itemPattern.exec(block)) !== null) {
+    const [_, codigo, descricaoRaw, ncm, cst, cfop, unidadeRaw, quantidadeRaw, valorUnitRaw, valorTotalRaw] = match;
 
-    const ncm = dataLines[j + 1] || "";
-    const cst = dataLines[j + 2] || "";
-    const cfop = dataLines[j + 3] || "";
-    const unidade = dataLines[j + 4] || "";
-    const quantidadeRaw = dataLines[j + 5] || "";
-    const valorUnitRaw = dataLines[j + 6] || "";
-    const valorTotalRaw = dataLines[j + 7] || "";
+    const descricao = cleanSpaces(
+      descricaoRaw
+        .replace(/^\d{12,14}\s+/, "")
+        .replace(/\s+/g, " ")
+    );
 
-    if (!/^\d{8}$/.test(ncm) || !/^\d{3}$/.test(cst) || !/^\d{4}$/.test(cfop)) {
-      i += 1;
-      continue;
-    }
-
-    // Remove GTIN/EAN quando aparece isolado no início da descrição.
-    const desc = cleanSpaces(descParts.join(" ").replace(/^\d{12,14}\s+/, ""));
     const quantidade = parseBrazilianNumber(quantidadeRaw);
     const valorUnitario = parseBrazilianNumber(valorUnitRaw);
     const valorTotal = parseBrazilianNumber(valorTotalRaw);
 
+    if (!codigo || !descricao || !Number.isFinite(quantidade) || !Number.isFinite(valorTotal)) continue;
+
     items.push({
       codigo,
-      descricaoOriginal: desc,
+      descricaoOriginal: descricao,
       descricaoPadronizada: "",
       ncm,
       cst,
       cfop,
-      unidade,
+      unidade: unidadeRaw.replace(/\.$/, ""),
       quantidade,
       valorUnitario,
       valorTotal,
     });
-
-    i = j + 8;
   }
 
   return items;

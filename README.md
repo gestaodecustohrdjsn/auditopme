@@ -6,9 +6,9 @@ Versão inicial do sistema web para leitura local, conferência e futura consoli
 
 ## Princípio de privacidade
 
-O navegador pode utilizar dados pessoais presentes no PDF (ex.: nome do paciente, CPF e médicos) durante a auditoria. Esses campos **não fazem parte do objeto persistível de custos**. Na v0.1.0 nenhum dado é enviado a Google Sheets, Apps Script, Drive ou outro backend.
+O navegador pode utilizar dados pessoais presentes no PDF (ex.: nome do paciente, CPF e médicos) durante a auditoria. Esses campos **não fazem parte do objeto persistível de custos**. Na v0.1.1 nenhum dado é enviado a Google Sheets, Apps Script, Drive ou outro backend.
 
-## v0.1.0
+## v0.1.1
 
 - Upload múltiplo de PDFs
 - Leitura local com PDF.js
@@ -47,3 +47,12 @@ auditopme/
 ## Próxima etapa planejada
 
 v0.2: edição de campos, aprovação/rejeição, motivos de auditoria e de-para temporário.
+
+
+## Alterações da v0.1.1
+
+- Parser de itens MEDPRO mais tolerante às quebras de linha do PDF.js.
+- Ordenação do texto do PDF por posição visual antes da extração.
+- CNPJ exibido junto ao fornecedor e pedido abaixo do cabeçalho.
+- Layout/parser removidos da interface de auditoria.
+- Chave de acesso movida para o rodapé da área expandida.
